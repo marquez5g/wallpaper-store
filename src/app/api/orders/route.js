@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import crypto from 'crypto'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/db'
 
 function generateOrderNumber() {
   return `WS${Date.now()}${Math.random().toString(36).substring(2, 7).toUpperCase()}`

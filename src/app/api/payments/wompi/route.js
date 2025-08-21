@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/db'
 
 const WOMPI_BASE_URL = process.env.WOMPI_ENVIRONMENT === 'production' 
   ? 'https://production.wompi.co/v1'

@@ -1,59 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Download, Check, X, CreditCard, Eye } from 'lucide-react';
-
-// Mock wallpaper data - using placeholder images that work reliably
-const mockWallpapers = [
-  { 
-    id: 1, 
-    title: 'Mountain Sunset', 
-    price: 15000, 
-    preview: 'https://picsum.photos/400/600?random=1', 
-    fullRes: 'https://picsum.photos/1920/1080?random=1', 
-    category: 'Nature' 
-  },
-  { 
-    id: 2, 
-    title: 'Ocean Waves', 
-    price: 12000, 
-    preview: 'https://picsum.photos/400/600?random=2', 
-    fullRes: 'https://picsum.photos/1920/1080?random=2', 
-    category: 'Nature' 
-  },
-  { 
-    id: 3, 
-    title: 'City Lights', 
-    price: 18000, 
-    preview: 'https://picsum.photos/400/600?random=3', 
-    fullRes: 'https://picsum.photos/1920/1080?random=3', 
-    category: 'Urban' 
-  },
-  { 
-    id: 4, 
-    title: 'Forest Path', 
-    price: 14000, 
-    preview: 'https://picsum.photos/400/600?random=4', 
-    fullRes: 'https://picsum.photos/1920/1080?random=4', 
-    category: 'Nature' 
-  },
-  { 
-    id: 5, 
-    title: 'Abstract Colors', 
-    price: 20000, 
-    preview: 'https://picsum.photos/400/600?random=5', 
-    fullRes: 'https://picsum.photos/1920/1080?random=5', 
-    category: 'Abstract' 
-  },
-  { 
-    id: 6, 
-    title: 'Desert Dunes', 
-    price: 16000, 
-    preview: 'https://picsum.photos/400/600?random=6', 
-    fullRes: 'https://picsum.photos/1920/1080?random=6', 
-    category: 'Nature' 
-  },
-];
+import { ShoppingCart, Download, Check, X, CreditCard, Eye, Loader2 } from 'lucide-react';
 
 const WallpaperStore = () => {
   const [cart, setCart] = useState([]);
@@ -62,6 +10,9 @@ const WallpaperStore = () => {
   const [showCheckout, setShowCheckout] = useState(false);
   const [showPreview, setShowPreview] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState(null);
+  const [wallpapers, setWallpapers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [customerInfo, setCustomerInfo] = useState({
     email: '',
     name: '',
@@ -70,9 +21,34 @@ const WallpaperStore = () => {
 
   const categories = ['All', 'Nature', 'Urban', 'Abstract'];
 
-  const filteredWallpapers = selectedCategory === 'All' 
-    ? mockWallpapers 
-    : mockWallpapers.filter(w => w.category === selectedCategory);
+  // Fetch wallpapers from API
+  useEffect(() => {
+    fetchWallpapers();
+  }, [selectedCategory]);
+
+  const fetchWallpapers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const category = selectedCategory === 'All' ? '' : selectedCategory;
+      const response = await fetch(`/api/wallpapers?category=${category}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch wallpapers');
+      }
+      
+      const data = await response.json();
+      setWallpapers(data.wallpapers || []);
+    } catch (err) {
+      console.error('Error fetching wallpapers:', err);
+      setError('Failed to load wallpapers. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredWallpapers = wallpapers;
 
   const addToCart = (wallpaper) => {
     setCart(prev => {
@@ -106,12 +82,13 @@ const WallpaperStore = () => {
     return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
-  const formatPrice = (price) => {
+  const formatPrice = (priceInCents) => {
+    const priceInPesos = priceInCents / 100; // Convert from cents to pesos
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',
       minimumFractionDigits: 0,
-    }).format(price);
+    }).format(priceInPesos);
   };
 
   const handleCheckout = () => {
@@ -187,42 +164,63 @@ const WallpaperStore = () => {
         </div>
 
         {/* Gallery Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredWallpapers.map(wallpaper => (
-            <div key={wallpaper.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-              <div className="relative group">
-                <img
-                  src={wallpaper.preview}
-                  alt={wallpaper.title}
-                  className="w-full h-48 object-cover"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
-                  <button
-                    onClick={() => setShowPreview(wallpaper)}
-                    className="p-2 bg-white rounded-full text-gray-900 hover:bg-gray-100 transition-colors"
-                  >
-                    <Eye size={20} />
-                  </button>
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <span className="ml-2 text-gray-600">Cargando wallpapers...</span>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={fetchWallpapers}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : filteredWallpapers.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600">No se encontraron wallpapers en esta categoría.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredWallpapers.map(wallpaper => (
+              <div key={wallpaper.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                <div className="relative group">
+                  <img
+                    src={wallpaper.previewUrl}
+                    alt={wallpaper.title}
+                    className="w-full h-48 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
+                    <button
+                      onClick={() => setShowPreview(wallpaper)}
+                      className="p-2 bg-white rounded-full text-gray-900 hover:bg-gray-100 transition-colors"
+                    >
+                      <Eye size={20} />
+                    </button>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold text-gray-900 mb-1">{wallpaper.title}</h3>
+                  <p className="text-sm text-gray-600 mb-3">{wallpaper.category}</p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-bold text-blue-600">
+                      {formatPrice(wallpaper.price)}
+                    </span>
+                    <button
+                      onClick={() => addToCart(wallpaper)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      Agregar
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-1">{wallpaper.title}</h3>
-                <p className="text-sm text-gray-600 mb-3">{wallpaper.category}</p>
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-bold text-blue-600">
-                    {formatPrice(wallpaper.price)}
-                  </span>
-                  <button
-                    onClick={() => addToCart(wallpaper)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                  >
-                    Agregar
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Preview Modal */}
@@ -236,7 +234,7 @@ const WallpaperStore = () => {
               <X size={24} />
             </button>
             <img
-              src={showPreview.fullRes}
+              src={showPreview.fullResUrl}
               alt={showPreview.title}
               className="max-w-full max-h-full object-contain rounded-lg"
             />
@@ -272,7 +270,7 @@ const WallpaperStore = () => {
                   {cart.map(item => (
                     <div key={item.id} className="flex items-center space-x-3 bg-gray-50 p-3 rounded-lg">
                       <img
-                        src={item.preview}
+                        src={item.previewUrl}
                         alt={item.title}
                         className="w-12 h-12 object-cover rounded"
                       />
