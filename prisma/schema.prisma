@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Wallpaper {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  category    String
+  price       Int      // Price in COP cents (15000 = $150.00)
+  previewUrl  String
+  fullResUrl  String
+  thumbnailUrl String?
+  tags        String[] // Array of tags for search
+  resolution  String   // e.g., "1920x1080", "4K"
+  fileSize    String   // e.g., "2.5MB"
+  downloads   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  orderItems  OrderItem[]
+  
+  @@map("wallpapers")
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique
+  customerEmail String
+  customerName  String
+  customerPhone String?
+  totalAmount   Int         // Total in COP cents
+  status        OrderStatus @default(PENDING)
+  paymentId     String?     // Wompi transaction ID
+  paymentMethod String?
+  downloadToken String      @unique // Token for download access
+  expiresAt     DateTime    // Download link expiration
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  // Relations
+  items OrderItem[]
+  
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String @id @default(cuid())
+  orderId     String
+  wallpaperId String
+  quantity    Int    @default(1)
+  price       Int    // Price at time of purchase
+  
+  // Relations
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  wallpaper Wallpaper @relation(fields: [wallpaperId], references: [id])
+  
+  @@map("order_items")
+}
+
+model Download {
+  id            String   @id @default(cuid())
+  orderId       String
+  wallpaperId   String
+  customerEmail String
+  downloadCount Int      @default(0)
+  maxDownloads  Int      @default(5) // Allow 5 downloads per purchase
+  lastDownload  DateTime?
+  createdAt     DateTime @default(now())
+  
+  @@unique([orderId, wallpaperId])
+  @@map("downloads")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+  REFUNDED
+}
